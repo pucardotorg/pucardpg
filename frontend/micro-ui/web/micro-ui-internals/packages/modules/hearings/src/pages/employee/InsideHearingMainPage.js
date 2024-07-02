@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
-import { Header, ActionBar, SVG, SubmitBar, Card } from "@egovernments/digit-ui-react-components";
+import React, { useEffect, useRef, useState } from "react";
+import { ActionBar, Card } from "@egovernments/digit-ui-react-components";
 import { Button, TextArea } from "@egovernments/digit-ui-components";
 import EvidenceHearingHeader from "./EvidenceHeader";
 import HearingSideCard from "./HearingSideCard";
+import MarkAttendance from "./MarkAttendance";
 import debounce from "lodash/debounce";
 
 const fieldStyle = { marginRight: 0 };
@@ -20,6 +21,10 @@ const InsideHearingMainPage = () => {
   const [additionalDetails, setAdditionalDetails] = useState({});
   const [selectedWitness, setSelectedWitness] = useState({});
   const textAreaRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [attendees, setAttendees] = useState([]);
+
+  const [updatedHearingDetails, setUpdatedHearingDetails] = useState({});
   const tenantId = window?.Digit.ULBService.getCurrentTenantId();
   const { hearingId: hearingId } = Digit.Hooks.useQueryParams(); // query paramas
 
@@ -52,6 +57,13 @@ const InsideHearingMainPage = () => {
     !checkUserApproval("CASE_VIEWER")
   );
 
+  const { data: updatehearingResponse, refetch: updaterefetch } = Digit.Hooks.hearings.useUpdateHearingsService(
+    updatedHearingDetails,
+    "",
+    "dristi",
+    true
+  );
+
   useEffect(() => {
     if (latestText) {
       const hearingData = latestText?.HearingList[0];
@@ -69,13 +81,14 @@ const InsideHearingMainPage = () => {
         setDelayedText(hearingData?.transcript[0]);
         setSelectedWitness(processedAdditionalDetails.witnesss[0] || {});
         setWitnessDepositionText(processedAdditionalDetails.witnesss[0]?.deposition || "");
+        setAttendees(hearingData.attendees || []);
+        setUpdatedHearingDetails(hearingData || []);
       }
     }
   }, [latestText]);
 
-  const handleNavigate = (path) => {
-    const contextPath = window?.contextPath || "";
-    history.push(`/${contextPath}${path}`);
+  const handleModal = () => {
+    setIsOpen(!isOpen);
   };
 
   const updateText = debounce(async (newText) => {
@@ -248,7 +261,8 @@ const InsideHearingMainPage = () => {
             <Button
               label={"Mark Attendance"}
               variation={"teritiary"}
-              onClick={() => handleNavigate("/employee/hearings/mark-attendance")}
+              onClick={handleModal}
+              // onClick={() => handleNavigate("/employee/hearings/mark-attendance")}
               style={{ width: "100%" }}
             />
           </div>
@@ -273,6 +287,16 @@ const InsideHearingMainPage = () => {
               style={{ width: "100%" }}
             />
           </div>
+          {isOpen && (
+            <MarkAttendance
+              handleModal={handleModal}
+              attendees={attendees}
+              setAttendees={setAttendees}
+              refetch={updaterefetch}
+              hearing={hearing}
+              setUpdatedHearingDetails={setUpdatedHearingDetails}
+            />
+          )}
         </div>
       </ActionBar>
     </div>
